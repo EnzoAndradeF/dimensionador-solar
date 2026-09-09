@@ -20,7 +20,7 @@ git config --global user.email "seu-email-do-github@exemplo.com"
 ```
 
 ### 3️⃣ Clonando o Repositório
-Crie uma pasta onde vai ficar armazenado o repositório
+Crie uma pasta onde vai ficar armazenado o repositório (NÃO PODE SER NO GOOGLE DRIVE)
 Dentro dessa pasta, abra o terminal de comando digite o seguinte código
 ```
 git clone https://github.com/EnzoAndradeF/dimensionador-fotovoltaico-sigiloso.git

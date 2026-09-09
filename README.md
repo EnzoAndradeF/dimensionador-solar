@@ -13,15 +13,18 @@ Se você ainda não tem o Git instalado no seu computador:
 * **Linux:** Rode o comando `sudo apt install git` (para distribuições baseadas em Debian/Ubuntu).
 
 ### 2️⃣ Configuração Inicial (Apenas na primeira vez)
-Abra o seu terminal (ou Git Bash no Windows) e configure sua identidade para que o GitHub reconheça seus envios:
+Abra o Git Bash e configure sua identidade para que o GitHub reconheça seus envios:
 ```bash
 git config --global user.name "Seu Nome Completo"
 git config --global user.email "seu-email-do-github@exemplo.com"
 ```
 
 ### 3️⃣ Clonando o Repositório
-Crie uma pasta onde vai ficar armazenado o repositório (NÃO PODE SER NO GOOGLE DRIVE)
-Dentro dessa pasta, abra o terminal de comando digite o seguinte código
+Escolha ou crie uma pasta que ficara o repositório (NÃO PODE SER NO GOOGLE DRIVE)
+Abra o git bash dentro dessa pasta
+<img width="845" height="455" alt="image" src="https://github.com/user-attachments/assets/76672f90-7096-4984-ba0e-02f0c7c638ea" />
+
+digite o seguinte código
 ```
 git clone https://github.com/EnzoAndradeF/dimensionador-fotovoltaico-sigiloso.git
 ```
@@ -34,6 +37,8 @@ Toda vez que você precisar atualizar os dados, siga estritamente estes **4 pass
 
 ### Passo 1: Atualize seu computador antes de mexer
 Abra o terminal na pasta do repositório
+<img width="865" height="510" alt="image" src="https://github.com/user-attachments/assets/237ee72f-5577-4891-9a1c-ebf4bb3ca171" />
+
 Para garantir que você tem a planilha mais recente e não apagar o trabalho de outra pessoa, rode:
 ```bash
 git pull origin main

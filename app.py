@@ -3,7 +3,6 @@ import pandas as pd
 import math 
 import io 
 import os
-from datetime import datetime
 
 st.set_page_config(
     page_title="Quantitativo de Painéis por MPPT - Sou Energy",
@@ -11,7 +10,6 @@ st.set_page_config(
 )
 
 st.title("Quantitativo de Painéis por Inversor - Sou Energy")
-st.markdown("Base de dados filtrada por **Disponivel = Sim**. Selecione os equipamentos desejados na barra lateral.")
 
 st.sidebar.header("Parâmetros Globais")
 t_min = st.sidebar.number_input("T. Mínima Ambiente (°C)", value=0)
@@ -19,7 +17,6 @@ t_max = st.sidebar.number_input("T. Máxima Painel (°C)", value=75)
 
 PLANILHA = "calculo_mppt.xlsx"
 
-# O prefixo '_' no parâmetro _mtime indica ao Streamlit para não fazer hash desse argumento especificamente
 @st.cache_data
 def carregar_dados_limpos(caminho, _mtime):
     xl = pd.ExcelFile(caminho)
@@ -52,40 +49,24 @@ if os.path.exists(PLANILHA):
         sku_p_cols = [c for c in df_paineis.columns if 'sku_p' in c.lower()]
         sku_i_cols = [c for c in df_inversores.columns if 'sku_i' in c.lower()]
 
-        # Função auxiliar para formatar a string de exibição do equipamento
         def formatar_opcao(row, col_nome, sku_cols):
             nome = str(row[col_nome]).strip()
             if sku_cols and pd.notna(row[sku_cols[0]]):
                 return f"[{row[sku_cols[0]]}] {nome}"
             return nome
 
-        # Listas de opções formatadas
-        opcoes_paineis = [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
-        opcoes_inversores = [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
+        lista_paineis = ["Todos"] + [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
+        lista_inversores = ["Todos"] + [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
 
-        # Seleção Múltipla com 'multiselect'
-        st.sidebar.markdown("**Painéis:** *(deixe vazio ou selecione 'Todos' para incluir todos)*")
-        paineis_selecionados = st.sidebar.multiselect(
-            "Filtrar Painéis:",
-            options=["Todos"] + opcoes_paineis,
-            default=["Todos"]
-        )
-
-        st.sidebar.markdown("**Inversores:** *(deixe vazio ou selecione 'Todos' para incluir todos)*")
-        inversores_selecionados = st.sidebar.multiselect(
-            "Filtrar Inversores:",
-            options=["Todos"] + opcoes_inversores,
-            default=["Todos"]
-        )
+        painel_selecionado = st.sidebar.selectbox("Filtrar Painel:", lista_paineis)
+        inversor_selecionado = st.sidebar.selectbox("Filtrar Inversor:", lista_inversores)
 
         def calcular_quantitativo(df_p, df_i, t_min, t_max, sel_p, sel_i):
-            # Lógica de filtro flexível para Painéis
-            if sel_p and "Todos" not in sel_p:
-                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) in sel_p, axis=1)]
+            if sel_p != "Todos":
+                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) == sel_p, axis=1)]
 
-            # Lógica de filtro flexível para Inversores
-            if sel_i and "Todos" not in sel_i:
-                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) in sel_i, axis=1)]
+            if sel_i != "Todos":
+                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) == sel_i, axis=1)]
 
             resultados = []
 
@@ -114,53 +95,71 @@ if os.path.exists(PLANILHA):
                     if min_string > max_string or max_string == 0:
                         status = "Incompatível (Faixa Tensão Inválida)"
                         max_total_final = 0
+                        pot_min_kwp = 0.0
+                        pot_max_kwp = 0.0
                     else:
                         status = "Compatível"
                         max_total_final = max_total_potencia
+                        pot_min_kwp = round((min_string * pot_p) / 1000.0, 2)
+                        pot_max_kwp = round((max_total_final * pot_p) / 1000.0, 2)
 
+                    # Dicionário contendo todas as informações (técnicas + resumo)
                     resultados.append({
                         "SKU Painel": sku_painel,
                         "Painel": modulo,
+                        "Potência Painel (W)": pot_p,
+                        "Voc Corrigido (V)": round(voc_corrigida, 2),
+                        "Vmp Corrigido (V)": round(vmp_corrigida, 2),
                         "SKU Inversor": sku_inversor,
                         "Inversor": modelo_inv,
+                        "Pmax Inversor (W)": pmax_inv,
+                        "Vmax Inversor (V)": vmax_inv,
+                        "Vmin MPPT (V)": vmin_mppt,
                         "Status": status,
                         "Mín. Módulos / String": min_string,
-                        "Máx. Painéis / Inversor": max_total_final
+                        "Pot. Mínima (kWp)": pot_min_kwp,
+                        "Máx. Painéis / Inversor": max_total_final,
+                        "Pot. Máxima (kWp)": pot_max_kwp
                     })
 
             return pd.DataFrame(resultados)
 
-        # Botão para processar
         if st.button("Processar Quantitativo", type="primary"):
             with st.spinner("Calculando arranjos..."):
-                df_res = calcular_quantitativo(df_paineis, df_inversores, t_min, t_max, paineis_selecionados, inversores_selecionados)
-                st.session_state['df_resultado'] = df_res
+                df_res = calcular_quantitativo(df_paineis, df_inversores, t_min, t_max, painel_selecionado, inversor_selecionado)
+                
+                if df_res.empty:
+                    st.warning("Nenhum item encontrado para a seleção realizada.")
+                else:
+                    st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
+                    
+                    # Exibe a tabela completa com informações técnicas no Streamlit
+                    st.dataframe(df_res, use_container_width=True)
 
-        # Exibição e Download do Resultado
-        if 'df_resultado' in st.session_state:
-            df_res = st.session_state['df_resultado']
+                    # Seleção estrita das colunas solicitadas para o relatório Excel
+                    colunas_relatorio = [
+                        "SKU Painel",
+                        "Painel",
+                        "SKU Inversor",
+                        "Inversor",
+                        "Mín. Módulos / String",
+                        "Pot. Mínima (kWp)",
+                        "Máx. Painéis / Inversor",
+                        "Pot. Máxima (kWp)"
+                    ]
+                    
+                    df_excel = df_res[colunas_relatorio]
 
-            if df_res.empty:
-                st.warning("Nenhum item encontrado para a seleção realizada.")
-            else:
-                st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
-                st.dataframe(df_res, use_container_width=True)
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        df_excel.to_excel(writer, index=False, sheet_name='Quantitativo_Estoque')
 
-                # Gera o arquivo Excel em memória
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    df_res.to_excel(writer, index=False, sheet_name='Quantitativo_Estoque')
-
-                # Nome dinâmico com Data e Hora
-                data_hora_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                nome_relatorio = f"Quantitativo_MPPT_{data_hora_str}.xlsx"
-
-                st.download_button(
-                    label="📥 Baixar Relatório (Excel)",
-                    data=buffer.getvalue(),
-                    file_name=nome_relatorio,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                    st.download_button(
+                        label="📥 Baixar Relatório (Excel)",
+                        data=buffer.getvalue(),
+                        file_name="Quantitativo_Selecionado.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
 
     except Exception as e:
         st.error(f"Erro ao processar a planilha: {e}")

@@ -18,8 +18,10 @@ t_max = st.sidebar.number_input("T. Máxima Painel (°C)", value=75)
 
 PLANILHA = "calculo_mppt.xlsx"
 
+# O prefixo '_' no parâmetro _mtime indica ao Streamlit para não fazer hash desse argumento especificamente,
+# mas qualquer mudança no seu valor força a execução e atualização da função.
 @st.cache_data
-def carregar_dados_limpos(caminho):
+def carregar_dados_limpos(caminho, _mtime):
     xl = pd.ExcelFile(caminho)
     
     df_p = pd.read_excel(xl, sheet_name="MPPT", header=1, usecols="BC:BK").dropna(subset=['Módulo', 'Pot'])
@@ -42,7 +44,11 @@ def carregar_dados_limpos(caminho):
 
 if os.path.exists(PLANILHA):
     try:
-        df_paineis, df_inversores = carregar_dados_limpos(PLANILHA)
+        # Pega a data/hora de modificação do arquivo no sistema
+        mtime_planilha = os.path.getmtime(PLANILHA)
+        
+        # Passa o mtime para recarregar o cache automaticamente sempre que o arquivo for atualizado
+        df_paineis, df_inversores = carregar_dados_limpos(PLANILHA, _mtime=mtime_planilha)
 
         st.sidebar.header("Seleção de Equipamentos")
 

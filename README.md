@@ -1,5 +1,5 @@
-https://dimensionador-fotovoltaico-sigilos-ahu4vpgxku2e7fvmuz7nwg.streamlit.app/
-
+O link da aplicação: https://dimensionador-fotovoltaico-sigilos-ahu4vpgxku2e7fvmuz7nwg.streamlit.app/
+**Entre com sua conta do github**
 ## Como Alimentar a Planilha
 
 Como o repositório é privado, apenas colaboradores autorizados podem atualizar a base de dados. O sistema lê as informações diretamente do arquivo Excel na raiz do projeto.

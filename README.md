@@ -23,7 +23,7 @@ git config --global user.email "seu-email-do-github@exemplo.com"
 Crie uma pasta onde vai ficar armazenado o repositório
 Dentro dessa pasta, abra o terminal de comando digite o seguinte código
 ```
-git clone https://github.com
+git clone https://github.com/EnzoAndradeF/dimensionador-fotovoltaico-sigiloso.git
 ```
 
 ---

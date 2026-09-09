@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("Quantitativo de Painéis por Inversor - Sou Energy")
-st.markdown("Base de dados filtrada por **Em Loja = Sim**. Selecione os equipamentos desejados na barra lateral.")
+st.markdown("Base de dados filtrada por **Disponivel = Sim**. Selecione os equipamentos desejados na barra lateral.")
 
 st.sidebar.header("Parâmetros Globais")
 t_min = st.sidebar.number_input("T. Mínima Ambiente (°C)", value=0)
@@ -23,7 +23,6 @@ def carregar_dados_limpos(caminho):
     xl = pd.ExcelFile(caminho)
     
     df_p = pd.read_excel(xl, sheet_name="MPPT", header=1, usecols="BC:BK").dropna(subset=['Módulo', 'Pot'])
-    
     df_i = pd.read_excel(xl, sheet_name="MPPT", header=1, usecols="BK:DL").dropna(subset=['Inversor', 'Pmax'])
     
     df_p.columns = [str(c).strip() for c in df_p.columns]
@@ -47,35 +46,31 @@ if os.path.exists(PLANILHA):
 
         st.sidebar.header("Seleção de Equipamentos")
 
-        sku_p_cols = [c for c in df_paineis.columns if any(k in c.lower() for k in ['sku_p'])]
-        sku_i_cols = [c for c in df_inversores.columns if any(k in c.lower() for k in ['sku_i'])]
+        sku_p_cols = [c for c in df_paineis.columns if 'sku_p' in c.lower()]
+        sku_i_cols = [c for c in df_inversores.columns if 'sku_i' in c.lower()]
 
-        lista_paineis = ["Todos"]
-        
-        for _, r in df_paineis.iterrows():
-            lista_paineis.append(f"{str(r['Módulo']).strip()}")
+        # Função auxiliar para formatar a string de exibição do equipamento
+        def formatar_opcao(row, col_nome, sku_cols):
+            nome = str(row[col_nome]).strip()
+            if sku_cols and pd.notna(row[sku_cols[0]]):
+                return f"[{row[sku_cols[0]]}] {nome}"
+            return nome
+
+        # Montagem padronizada das listas dos Selectbox
+        lista_paineis = ["Todos"] + [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
+        lista_inversores = ["Todos"] + [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
 
         painel_selecionado = st.sidebar.selectbox("Filtrar Painel:", lista_paineis)
-
-        lista_inversores = ["Todos"]
-        
-        for _, r in df_inversores.iterrows():
-            lista_inversores.append(f"{str(r['Inversor']).strip()}")
-
         inversor_selecionado = st.sidebar.selectbox("Filtrar Inversor:", lista_inversores)
 
         def calcular_quantitativo(df_p, df_i, t_min, t_max, sel_p, sel_i):
+            # Filtro por Painel
             if sel_p != "Todos":
-                df_p = df_p[df_p.apply(
-                    lambda r: f"{'[' + str(r[sku_p_cols[0]]) + '] ' if sku_p_cols and pd.notna(r[sku_p_cols[0]]) else ''}{str(r['Módulo']).strip()}" == sel_p,
-                    axis=1
-                )]
+                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) == sel_p, axis=1)]
 
+            # Filtro por Inversor
             if sel_i != "Todos":
-                df_i = df_i[df_i.apply(
-                    lambda r: f"{'[' + str(r[sku_i_cols[0]]) + '] ' if sku_i_cols and pd.notna(r[sku_i_cols[0]]) else ''}{str(r['Inversor']).strip()}" == sel_i,
-                    axis=1
-                )]
+                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) == sel_i, axis=1)]
 
             resultados = []
 

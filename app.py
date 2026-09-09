@@ -3,6 +3,7 @@ import pandas as pd
 import math 
 import io 
 import os
+from datetime import datetime
 
 st.set_page_config(
     page_title="Quantitativo de Painéis por MPPT - Sou Energy",
@@ -18,8 +19,7 @@ t_max = st.sidebar.number_input("T. Máxima Painel (°C)", value=75)
 
 PLANILHA = "calculo_mppt.xlsx"
 
-# O prefixo '_' no parâmetro _mtime indica ao Streamlit para não fazer hash desse argumento especificamente,
-# mas qualquer mudança no seu valor força a execução e atualização da função.
+# O prefixo '_' no parâmetro _mtime indica ao Streamlit para não fazer hash desse argumento especificamente
 @st.cache_data
 def carregar_dados_limpos(caminho, _mtime):
     xl = pd.ExcelFile(caminho)
@@ -44,10 +44,7 @@ def carregar_dados_limpos(caminho, _mtime):
 
 if os.path.exists(PLANILHA):
     try:
-        # Pega a data/hora de modificação do arquivo no sistema
         mtime_planilha = os.path.getmtime(PLANILHA)
-        
-        # Passa o mtime para recarregar o cache automaticamente sempre que o arquivo for atualizado
         df_paineis, df_inversores = carregar_dados_limpos(PLANILHA, _mtime=mtime_planilha)
 
         st.sidebar.header("Seleção de Equipamentos")
@@ -62,21 +59,33 @@ if os.path.exists(PLANILHA):
                 return f"[{row[sku_cols[0]]}] {nome}"
             return nome
 
-        # Montagem padronizada das listas dos Selectbox
-        lista_paineis = ["Todos"] + [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
-        lista_inversores = ["Todos"] + [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
+        # Listas de opções formatadas
+        opcoes_paineis = [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
+        opcoes_inversores = [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
 
-        painel_selecionado = st.sidebar.selectbox("Filtrar Painel:", lista_paineis)
-        inversor_selecionado = st.sidebar.selectbox("Filtrar Inversor:", lista_inversores)
+        # Seleção Múltipla com 'multiselect'
+        st.sidebar.markdown("**Painéis:** *(deixe vazio ou selecione 'Todos' para incluir todos)*")
+        paineis_selecionados = st.sidebar.multiselect(
+            "Filtrar Painéis:",
+            options=["Todos"] + opcoes_paineis,
+            default=["Todos"]
+        )
+
+        st.sidebar.markdown("**Inversores:** *(deixe vazio ou selecione 'Todos' para incluir todos)*")
+        inversores_selecionados = st.sidebar.multiselect(
+            "Filtrar Inversores:",
+            options=["Todos"] + opcoes_inversores,
+            default=["Todos"]
+        )
 
         def calcular_quantitativo(df_p, df_i, t_min, t_max, sel_p, sel_i):
-            # Filtro por Painel
-            if sel_p != "Todos":
-                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) == sel_p, axis=1)]
+            # Lógica de filtro flexível para Painéis
+            if sel_p and "Todos" not in sel_p:
+                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) in sel_p, axis=1)]
 
-            # Filtro por Inversor
-            if sel_i != "Todos":
-                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) == sel_i, axis=1)]
+            # Lógica de filtro flexível para Inversores
+            if sel_i and "Todos" not in sel_i:
+                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) in sel_i, axis=1)]
 
             resultados = []
 
@@ -121,26 +130,37 @@ if os.path.exists(PLANILHA):
 
             return pd.DataFrame(resultados)
 
+        # Botão para processar
         if st.button("Processar Quantitativo", type="primary"):
             with st.spinner("Calculando arranjos..."):
-                df_res = calcular_quantitativo(df_paineis, df_inversores, t_min, t_max, painel_selecionado, inversor_selecionado)
-                
-                if df_res.empty:
-                    st.warning("Nenhum item encontrado para a seleção realizada.")
-                else:
-                    st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
-                    st.dataframe(df_res, use_container_width=True)
+                df_res = calcular_quantitativo(df_paineis, df_inversores, t_min, t_max, paineis_selecionados, inversores_selecionados)
+                st.session_state['df_resultado'] = df_res
 
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_res.to_excel(writer, index=False, sheet_name='Quantitativo_Estoque')
+        # Exibição e Download do Resultado
+        if 'df_resultado' in st.session_state:
+            df_res = st.session_state['df_resultado']
 
-                    st.download_button(
-                        label="📥 Baixar Relatório (Excel)",
-                        data=buffer.getvalue(),
-                        file_name="Quantitativo_Selecionado.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+            if df_res.empty:
+                st.warning("Nenhum item encontrado para a seleção realizada.")
+            else:
+                st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
+                st.dataframe(df_res, use_container_width=True)
+
+                # Gera o arquivo Excel em memória
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    df_res.to_excel(writer, index=False, sheet_name='Quantitativo_Estoque')
+
+                # Nome dinâmico com Data e Hora
+                data_hora_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                nome_relatorio = f"Quantitativo_MPPT_{data_hora_str}.xlsx"
+
+                st.download_button(
+                    label="📥 Baixar Relatório (Excel)",
+                    data=buffer.getvalue(),
+                    file_name=nome_relatorio,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
     except Exception as e:
         st.error(f"Erro ao processar a planilha: {e}")

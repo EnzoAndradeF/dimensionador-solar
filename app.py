@@ -3,6 +3,7 @@ import pandas as pd
 import math 
 import io 
 import os
+from datetime import datetime
 
 st.set_page_config(
     page_title="Quantitativo de Painéis por MPPT - Sou Energy",
@@ -15,10 +16,13 @@ st.sidebar.header("Parâmetros Globais")
 t_min = st.sidebar.number_input("T. Mínima Ambiente (°C)", value=0)
 t_max = st.sidebar.number_input("T. Máxima Painel (°C)", value=75)
 
+# Filtro para alternar entre itens de loja vs. catálogo completo
+apenas_em_loja = st.sidebar.checkbox("Apenas Equipamentos em Loja?", value=True)
+
 PLANILHA = "calculo_mppt.xlsx"
 
 @st.cache_data
-def carregar_dados_limpos(caminho, _mtime):
+def carregar_dados_limpos(caminho, apenas_loja, _mtime):
     xl = pd.ExcelFile(caminho)
     
     df_p = pd.read_excel(xl, sheet_name="MPPT", header=1, usecols="BC:BK").dropna(subset=['Módulo', 'Pot'])
@@ -27,14 +31,16 @@ def carregar_dados_limpos(caminho, _mtime):
     df_p.columns = [str(c).strip() for c in df_p.columns]
     df_i.columns = [str(c).strip() for c in df_i.columns]
 
-    col_loja_p = [c for c in df_p.columns if c.lower() == 'disponivel_p']
-    if col_loja_p:
-        df_p = df_p[df_p[col_loja_p[0]].astype(str).str.strip().str.upper().isin(['SIM'])]
+    # Aplica o filtro de loja apenas se o checkbox estiver marcado
+    if apenas_loja:
+        col_loja_p = [c for c in df_p.columns if c.lower() == 'disponivel_p']
+        if col_loja_p:
+            df_p = df_p[df_p[col_loja_p[0]].astype(str).str.strip().str.upper().isin(['SIM'])]
 
-    col_loja_i = [c for c in df_i.columns if c.lower() == 'disponivel_i']
-    if col_loja_i:
-        for c in col_loja_i:
-            df_i = df_i[df_i[c].astype(str).str.strip().str.upper().isin(['SIM'])]
+        col_loja_i = [c for c in df_i.columns if c.lower() == 'disponivel_i']
+        if col_loja_i:
+            for c in col_loja_i:
+                df_i = df_i[df_i[c].astype(str).str.strip().str.upper().isin(['SIM'])]
 
     return df_p, df_i
 
@@ -42,7 +48,11 @@ def carregar_dados_limpos(caminho, _mtime):
 if os.path.exists(PLANILHA):
     try:
         mtime_planilha = os.path.getmtime(PLANILHA)
-        df_paineis, df_inversores = carregar_dados_limpos(PLANILHA, _mtime=mtime_planilha)
+        df_paineis, df_inversores = carregar_dados_limpos(
+            PLANILHA, 
+            apenas_loja=apenas_em_loja, 
+            _mtime=mtime_planilha
+        )
 
         st.sidebar.header("Seleção de Equipamentos")
 
@@ -55,18 +65,35 @@ if os.path.exists(PLANILHA):
                 return f"[{row[sku_cols[0]]}] {nome}"
             return nome
 
-        lista_paineis = ["Todos"] + [formatar_opcao(r, 'Módulo', sku_p_cols) for _, r in df_paineis.iterrows()]
-        lista_inversores = ["Todos"] + [formatar_opcao(r, 'Inversor', sku_i_cols) for _, r in df_inversores.iterrows()]
+        # Cria a coluna formatada para facilidade de filtro
+        df_paineis['opcao_formatada'] = df_paineis.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols), axis=1)
+        df_inversores['opcao_formatada'] = df_inversores.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols), axis=1)
 
-        painel_selecionado = st.sidebar.selectbox("Filtrar Painel:", lista_paineis)
-        inversor_selecionado = st.sidebar.selectbox("Filtrar Inversor:", lista_inversores)
+        lista_paineis = ["Todos"] + df_paineis['opcao_formatada'].tolist()
+        lista_inversores = ["Todos"] + df_inversores['opcao_formatada'].tolist()
+
+        # Substituído por multiselect
+        paineis_selecionados = st.sidebar.multiselect(
+            "Filtrar Painel(is):", 
+            options=lista_paineis,
+            default=["Todos"],
+            help="Selecione um ou mais painéis. Deixe 'Todos' para considerar o catálogo inteiro."
+        )
+        
+        inversores_selecionados = st.sidebar.multiselect(
+            "Filtrar Inversor(es):", 
+            options=lista_inversores,
+            default=["Todos"],
+            help="Selecione um ou mais inversores. Deixe 'Todos' para considerar o catálogo inteiro."
+        )
 
         def calcular_quantitativo(df_p, df_i, t_min, t_max, sel_p, sel_i):
-            if sel_p != "Todos":
-                df_p = df_p[df_p.apply(lambda r: formatar_opcao(r, 'Módulo', sku_p_cols) == sel_p, axis=1)]
+            # Se não selecionou nada ou marcou "Todos", considera a base completa
+            if sel_p and "Todos" not in sel_p:
+                df_p = df_p[df_p['opcao_formatada'].isin(sel_p)]
 
-            if sel_i != "Todos":
-                df_i = df_i[df_i.apply(lambda r: formatar_opcao(r, 'Inversor', sku_i_cols) == sel_i, axis=1)]
+            if sel_i and "Todos" not in sel_i:
+                df_i = df_i[df_i['opcao_formatada'].isin(sel_i)]
 
             resultados = []
 
@@ -103,7 +130,6 @@ if os.path.exists(PLANILHA):
                         pot_min_kwp = round((min_string * pot_p) / 1000.0, 2)
                         pot_max_kwp = round((max_total_final * pot_p) / 1000.0, 2)
 
-                    # Dicionário contendo todas as informações (técnicas + resumo)
                     resultados.append({
                         "SKU Painel": sku_painel,
                         "Painel": modulo,
@@ -126,17 +152,22 @@ if os.path.exists(PLANILHA):
 
         if st.button("Processar Quantitativo", type="primary"):
             with st.spinner("Calculando arranjos..."):
-                df_res = calcular_quantitativo(df_paineis, df_inversores, t_min, t_max, painel_selecionado, inversor_selecionado)
+                df_res = calcular_quantitativo(
+                    df_paineis, 
+                    df_inversores, 
+                    t_min, 
+                    t_max, 
+                    paineis_selecionados, 
+                    inversores_selecionados
+                )
                 
                 if df_res.empty:
                     st.warning("Nenhum item encontrado para a seleção realizada.")
                 else:
                     st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
                     
-                    # Exibe a tabela completa com informações técnicas no Streamlit
                     st.dataframe(df_res, use_container_width=True)
 
-                    # Seleção estrita das colunas solicitadas para o relatório Excel
                     colunas_relatorio = [
                         "SKU Painel",
                         "Painel",
@@ -154,10 +185,14 @@ if os.path.exists(PLANILHA):
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                         df_excel.to_excel(writer, index=False, sheet_name='Quantitativo_Estoque')
 
+                    # Formatação dinâmica da data/hora de emissão
+                    data_emissao = datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    nome_arquivo = f"Quantitativo_{data_emissao}.xlsx"
+
                     st.download_button(
                         label="📥 Baixar Relatório (Excel)",
                         data=buffer.getvalue(),
-                        file_name="Quantitativo_Selecionado.xlsx",
+                        file_name=nome_arquivo,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
 

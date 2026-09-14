@@ -1,0 +1,16 @@
+name: Manter App Streamlit Acordado
+
+on:
+  schedule:
+    # Roda a cada 4 horas (sintaxe Cron)
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fazer requisição HTTP no App
+        run: |
+          curl -I "https://dimensionador-fotovoltaico-sigilos-ahu4vpgxku2e7fvmuz7nwg.streamlit.app/"
+

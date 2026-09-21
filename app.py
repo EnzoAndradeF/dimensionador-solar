@@ -204,37 +204,58 @@ if os.path.exists(PLANILHA):
                         })
                         continue
 
-                    # --- 2. OTIMIZAÇÃO DE COMBINAÇÕES INDEPENDENTES POR MPPT ---
-                    opcoes_por_mppt = []
-                    for mppt in mppts:
-                        max_str_corrente = math.floor(mppt['icc'] / icc_p) if icc_p > 0 else 0
-                        max_str = min(mppt['max_strings'], max_str_corrente)
-                        
-                        opcoes_mppt = [(0, 0)]
-                        for n_str in range(1, max_str + 1):
-                            for tam_str in range(min_string, max_string + 1):
-                                opcoes_mppt.append((n_str, tam_str))
-                        
-                        opcoes_por_mppt.append(opcoes_mppt)
-
+                    # --- 2. OTIMIZAÇÃO PRECISA, RÁPIDA E MISTA DE ARRANJOS ---
                     melhor_total_paineis = 0
                     melhor_potencia = 0.0
                     melhor_arranjo_str = ""
 
-                    for combinacao in itertools.product(*opcoes_por_mppt):
-                        total_paineis = sum(n_str * tam_str for n_str, tam_str in combinacao)
-                        potencia_total = total_paineis * pot_p
+                    tamanhos_validos = sorted(list(range(min_string, max_string + 1)), reverse=True)
 
-                        if potencia_total <= pmax_inv:
-                            if total_paineis > melhor_total_paineis:
-                                melhor_total_paineis = total_paineis
-                                melhor_potencia = potencia_total
-                                
-                                detalhes = [
-                                    f"MPPT{idx+1}: {n_str}x{tam_str}" 
-                                    for idx, (n_str, tam_str) in enumerate(combinacao) if n_str > 0
-                                ]
-                                melhor_arranjo_str = " | ".join(detalhes)
+                    # Testa estratégias focando no tamanho principal da string
+                    for tam_principal in tamanhos_validos:
+                        acumulado_paineis = 0
+                        arranjo_temp = []
+
+                        for mppt in mppts:
+                            max_str_corrente = math.floor(mppt['icc'] / icc_p) if icc_p > 0 else 0
+                            str_permitidas = min(mppt['max_strings'], max_str_corrente)
+
+                            alocado_mppt = (0, 0)
+
+                            # 1. Tenta alocar strings com o tamanho principal
+                            for n_str in range(str_permitidas, 0, -1):
+                                p_test = (acumulado_paineis + n_str * tam_principal) * pot_p
+                                if p_test <= pmax_inv:
+                                    alocado_mppt = (n_str, tam_principal)
+                                    break
+
+                            # 2. Se não couber o tamanho principal, tenta tamanhos menores (arranjos mistos/assimétricos)
+                            if alocado_mppt == (0, 0) and str_permitidas > 0:
+                                for tam_secundario in tamanhos_validos:
+                                    if tam_secundario >= tam_principal:
+                                        continue
+                                    for n_str in range(str_permitidas, 0, -1):
+                                        p_test = (acumulado_paineis + n_str * tam_secundario) * pot_p
+                                        if p_test <= pmax_inv:
+                                            alocado_mppt = (n_str, tam_secundario)
+                                            break
+                                    if alocado_mppt != (0, 0):
+                                        break
+
+                            n_str, tam_str = alocado_mppt
+                            if n_str > 0:
+                                acumulado_paineis += n_str * tam_str
+                                arranjo_temp.append((mppt['id'], n_str, tam_str))
+
+                        pot_total = acumulado_paineis * pot_p
+                        if acumulado_paineis > melhor_total_paineis and pot_total <= pmax_inv:
+                            melhor_total_paineis = acumulado_paineis
+                            melhor_potencia = pot_total
+                            detalhes = [
+                                f"MPPT{m_id}: {n_str}x{tam_str}"
+                                for m_id, n_str, tam_str in arranjo_temp
+                            ]
+                            melhor_arranjo_str = " | ".join(detalhes)
 
                     if melhor_total_paineis > 0:
                         status = "Compatível"

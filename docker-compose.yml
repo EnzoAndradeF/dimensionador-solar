@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  dimensionador-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dimensionador_solar_container
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+    restart: always

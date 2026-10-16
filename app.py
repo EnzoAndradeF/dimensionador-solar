@@ -17,13 +17,14 @@ st.sidebar.header("Parâmetros Globais")
 t_min = st.sidebar.number_input("T. Mínima Ambiente (°C)", value=0)
 t_max = st.sidebar.number_input("T. Máxima Painel (°C)", value=75)
 
-# Filtro para alternar entre itens de loja vs. catálogo completo
-apenas_em_loja = st.sidebar.checkbox("Apenas Equipamentos em Loja?", value=True)
+st.sidebar.header("Filtros de Disponibilidade em Loja")
+apenas_paineis_loja = st.sidebar.checkbox("Apenas Painéis em Loja?", value=True)
+apenas_inversores_loja = st.sidebar.checkbox("Apenas Inversores em Loja?", value=True)
 
 PLANILHA = "calculo_mppt.xlsx"
 
 @st.cache_data
-def carregar_dados_limpos(caminho, apenas_loja, _mtime):
+def carregar_dados_limpos(caminho, apenas_p_loja, apenas_i_loja, _mtime):
     xl = pd.ExcelFile(caminho)
     
     # Lê toda a aba MPPT sem travar colunas fixas por letra (A, B, BC, etc.)
@@ -49,12 +50,13 @@ def carregar_dados_limpos(caminho, apenas_loja, _mtime):
 
     df_i = df_raw.dropna(subset=['Inversor', 'Pmax']).copy()
 
-    # --- 3. FILTRO DE DISPONIBILIDADE EM LOJA ---
-    if apenas_loja:
+    # --- 3. FILTRO INDIVIDUAL DE DISPONIBILIDADE EM LOJA ---
+    if apenas_p_loja:
         col_loja_p = [c for c in df_p.columns if c.lower() == 'disponivel_p']
         if col_loja_p:
             df_p = df_p[df_p[col_loja_p[0]].astype(str).str.strip().str.upper().isin(['SIM'])]
 
+    if apenas_i_loja:
         col_loja_i = [c for c in df_i.columns if c.lower() == 'disponivel_i']
         if col_loja_i:
             df_i = df_i[df_i[col_loja_i[0]].astype(str).str.strip().str.upper().isin(['SIM'])]
@@ -67,7 +69,8 @@ if os.path.exists(PLANILHA):
         mtime_planilha = os.path.getmtime(PLANILHA)
         df_paineis, df_inversores = carregar_dados_limpos(
             PLANILHA, 
-            apenas_loja=apenas_em_loja, 
+            apenas_p_loja=apenas_paineis_loja,
+            apenas_i_loja=apenas_inversores_loja, 
             _mtime=mtime_planilha
         )
 

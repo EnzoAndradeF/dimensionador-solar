@@ -14,3 +14,4 @@ O projeto foi totalmente empacotado em **containers Docker**, versionado em regi
 
 <img width="1334" height="660" alt="image" src="https://github.com/user-attachments/assets/be44bbd1-8cfd-48bf-b23f-41d6807bc144" />
 
+![Docker Hub](https://img.shields.io/badge/Docker_Hub-enzoandradef/dimensionador--solar-2496ED?style=for-the-badge&logo=docker&logoColor=white)

@@ -12,3 +12,5 @@ O projeto foi totalmente empacotado em **containers Docker**, versionado em regi
 
 🌐 **Aplicação em Produção na AWS:** [http://3.23.128.112](http://3.23.128.112)
 
+<img width="1334" height="660" alt="image" src="https://github.com/user-attachments/assets/be44bbd1-8cfd-48bf-b23f-41d6807bc144" />
+

@@ -165,6 +165,9 @@ if os.path.exists(PLANILHA):
                     mppts = extrair_mppts_inversor(inv)
 
                     # --- 1. VALIDAÇÃO DE SEGURANÇA ELÉTRICA ---
+                    max_string = math.floor(vmax_inv / voc_corrigida) if voc_corrigida > 0 else 0
+                    min_string = math.ceil(vmin_mppt / vmp_corrigida) if vmp_corrigida > 0 else 0
+
                     if voc_corrigida > vmax_inv:
                         status = "Incompatível (Voc Excede Vmax do Inversor)"
                         compativel = False
@@ -179,9 +182,6 @@ if os.path.exists(PLANILHA):
                                 break
 
                     if compativel:
-                        max_string = math.floor(vmax_inv / voc_corrigida) if voc_corrigida > 0 else 0
-                        min_string = math.ceil(vmin_mppt / vmp_corrigida) if vmp_corrigida > 0 else 0
-
                         if min_string > max_string or max_string == 0:
                             status = "Incompatível (Faixa de Tensão Indisponível)"
                             compativel = False
@@ -190,20 +190,21 @@ if os.path.exists(PLANILHA):
                         resultados.append({
                             "SKU Painel": sku_painel,
                             "Painel": modulo,
+                            "SKU Inversor": sku_inversor,
+                            "Inversor": modelo_inv,
+                            "Status": status,
+                            "Mín. Módulos / String": 0,
+                            "Máx. Painéis / String": 0,
+                            "Máx. Painéis / Inversor": 0,
+                            "Arranjo/Combinação": "N/A",
                             "Potência Painel (W)": pot_p,
                             "Voc Corrigido (V)": round(voc_corrigida, 2),
                             "Vmp Corrigido (V)": round(vmp_corrigida, 2),
-                            "SKU Inversor": sku_inversor,
-                            "Inversor": modelo_inv,
                             "Pmax Inversor (W)": pmax_inv,
                             "Vmax Inversor (V)": vmax_inv,
                             "Vmin MPPT (V)": vmin_mppt,
-                            "Status": status,
-                            "Mín. Módulos / String": 0,
                             "Pot. Mínima (kWp)": 0.0,
-                            "Máx. Painéis / Inversor": 0,
-                            "Pot. Máxima (kWp)": 0.0,
-                            "Arranjo/Combinação": "N/A"
+                            "Pot. Máxima (kWp)": 0.0
                         })
                         continue
 
@@ -272,20 +273,21 @@ if os.path.exists(PLANILHA):
                     resultados.append({
                         "SKU Painel": sku_painel,
                         "Painel": modulo,
+                        "SKU Inversor": sku_inversor,
+                        "Inversor": modelo_inv,
+                        "Status": status,
+                        "Mín. Módulos / String": min_string,
+                        "Máx. Painéis / String": max_string,
+                        "Máx. Painéis / Inversor": melhor_total_paineis,
+                        "Arranjo/Combinação": melhor_arranjo_str if melhor_total_paineis > 0 else "N/A",
                         "Potência Painel (W)": pot_p,
                         "Voc Corrigido (V)": round(voc_corrigida, 2),
                         "Vmp Corrigido (V)": round(vmp_corrigida, 2),
-                        "SKU Inversor": sku_inversor,
-                        "Inversor": modelo_inv,
                         "Pmax Inversor (W)": pmax_inv,
                         "Vmax Inversor (V)": vmax_inv,
                         "Vmin MPPT (V)": vmin_mppt,
-                        "Status": status,
-                        "Mín. Módulos / String": min_string,
                         "Pot. Mínima (kWp)": pot_min_kwp,
-                        "Máx. Painéis / Inversor": melhor_total_paineis,
-                        "Pot. Máxima (kWp)": pot_max_kwp,
-                        "Arranjo/Combinação": melhor_arranjo_str if melhor_total_paineis > 0 else "N/A"
+                        "Pot. Máxima (kWp)": pot_max_kwp
                     })
 
             return pd.DataFrame(resultados)
@@ -306,6 +308,28 @@ if os.path.exists(PLANILHA):
                 else:
                     st.success(f"Concluído! {len(df_res)} combinação(ões) gerada(s).")
                     
+                    # Ordem exata de exibição das colunas
+                    colunas_exibicao = [
+                        "SKU Painel",
+                        "Painel",
+                        "SKU Inversor",
+                        "Inversor",
+                        "Status",
+                        "Mín. Módulos / String",
+                        "Máx. Painéis / String",
+                        "Máx. Painéis / Inversor",
+                        "Arranjo/Combinação",
+                        "Potência Painel (W)",
+                        "Voc Corrigido (V)",
+                        "Vmp Corrigido (V)",
+                        "Pmax Inversor (W)",
+                        "Vmax Inversor (V)",
+                        "Vmin MPPT (V)",
+                        "Pot. Mínima (kWp)",
+                        "Pot. Máxima (kWp)"
+                    ]
+
+                    df_res = df_res[colunas_exibicao]
                     st.dataframe(df_res, use_container_width=True)
 
                     colunas_relatorio = [
@@ -315,8 +339,9 @@ if os.path.exists(PLANILHA):
                         "Inversor",
                         "Status",
                         "Mín. Módulos / String",
-                        "Pot. Mínima (kWp)",
+                        "Máx. Painéis / String",
                         "Máx. Painéis / Inversor",
+                        "Pot. Mínima (kWp)",
                         "Pot. Máxima (kWp)",
                         "Arranjo/Combinação"
                     ]

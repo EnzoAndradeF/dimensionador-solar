@@ -19,11 +19,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            sudo docker system prune -af
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest
             sudo docker stop app-solar || true
             sudo docker rm app-solar || true
-            sudo docker run -d \
-              -p 80:8501 \
-              --restart always \
-              --name app-solar \
-              ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest
+            sudo docker run -d -p 80:8501 --restart always --name app-solar ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest

@@ -23,4 +23,4 @@ jobs:
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest
             sudo docker stop app-solar || true
             sudo docker rm app-solar || true
-            sudo docker run -d -p 80:8501 --restart always --name app-solar ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest
+            sudo docker run -d -p 8501:8501 --restart always --name app-solar ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest

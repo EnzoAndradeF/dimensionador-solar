@@ -22,7 +22,7 @@ services:
     container_name: dimensionador_solar_backend
     restart: always
     environment:
-      - DATABASE_URL=postgresql://solar_user:solar_password@db:5432/dimensionador_db
+      - DATABASE_URL=postgresql+psycopg2://solar_user:solar_password@db:5432/dimensionador_db
     ports:
       - "8000:8000"
     depends_on:

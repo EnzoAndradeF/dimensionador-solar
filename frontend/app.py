@@ -4,9 +4,9 @@ import pandas as pd
 import io
 from datetime import datetime
 
-API_URL = "http://localhost:8000"
+API_URL = "http://backend:8000"
 
-st.set_page_config(page_title="Quantitativo de Painéis por inversor", layout="wide")
+st.set_page_config(page_title="Dimensionador Solar", layout="wide")
 
 # --- GERENCIAMENTO DE CACHE ---
 @st.cache_data(ttl=300)
@@ -81,7 +81,7 @@ opcao = st.sidebar.radio("Navegação", menu)
 # 1. CALCULADORA MPPT
 # -------------------------------------------------------------
 if opcao == "Calculadora MPPT":
-    st.title("Quantitativo de Painéis por Inversor - Sou Energy")
+    st.title("Quantitativo de Painéis por Inversor")
 
     st.sidebar.header("Parâmetros Globais")
     t_min = st.sidebar.number_input("T. Mínima Ambiente (°C)", value=0, step=1)

@@ -1,0 +1,27 @@
+# Ambientes virtuais Python
+venv/
+.venv/
+env/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos de Variáveis de Ambiente e Segredos
+.env
+*.pem
+*.key
+
+# Bancos de dados locais antigos e planilhas com dados internos
+backend/solar.db
+*.db
+*.sqlite3
+backend/calculo_mppt.xlsx
+calculo_mppt.xlsx
+~$*.xlsx
+
+# Arquivos do IDE e sistema operacional
+.vscode/
+.idea/
+.DS_Store

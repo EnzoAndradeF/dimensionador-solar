@@ -2,14 +2,14 @@ name: CD Deploy to AWS EC2
 
 on:
   workflow_run:
-    workflows: [CI Build and Push Docker Image]
+    workflows: ["CI Build and Push Docker Image"]
     types:
       - completed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Deploy to AWS EC2 via SSH
@@ -19,8 +19,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            cd ~/dimensionador-solar
+            git pull origin main
+            sudo docker compose pull
+            sudo docker compose up -d
             sudo docker system prune -af
-            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest
-            sudo docker stop app-solar || true
-            sudo docker rm app-solar || true
-            sudo docker run -d -p 8501:8501 --restart always --name app-solar ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar:latest

@@ -6,7 +6,7 @@ from datetime import datetime
 
 API_URL = "http://localhost:8000"
 
-st.set_page_config(page_title="Quantitativo de Painéis por MPPT - Sou Energy", layout="wide")
+st.set_page_config(page_title="Quantitativo de Painéis por inversor", layout="wide")
 
 # --- GERENCIAMENTO DE CACHE ---
 @st.cache_data(ttl=300)
@@ -39,7 +39,7 @@ def get_headers():
     return {"Authorization": f"Bearer {st.session_state.token}"} if st.session_state.token else {}
 
 # --- BARRA LATERAL ---
-st.sidebar.title("☀️ Sou Energy Solar")
+st.sidebar.title("☀️ Dimensionador Solar")
 
 if st.session_state.token and st.session_state.role == "admin":
     st.sidebar.success(f"🔑 Logado como Admin: **{st.session_state.username}**")

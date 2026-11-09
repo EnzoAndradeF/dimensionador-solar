@@ -67,11 +67,13 @@ else:
                 else:
                     st.error("Credenciais inválidas.")
 
-menu = ["Calculadora MPPT"]
+# --- NAVEGAÇÃO DA SIDEBAR ---
+menu = ["Calculadora MPPT", "Compatibilidade de Painéis"]
+
 if st.session_state.role == "admin":
     menu.extend([
-        "Gerenciar Disponibilidade (Loja)", 
-        "Gestão de Painéis (CRUD)", 
+        "Gerenciar Disponibilidade (Loja)",
+        "Gestão de Painéis (CRUD)",
         "Gestão de Inversores (CRUD)"
     ])
 
@@ -127,9 +129,68 @@ if opcao == "Calculadora MPPT":
                     file_name=f"Quantitativo_{datetime.now().strftime('%Y-%m-%d_%H-%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+# -------------------------------------------------------------
+# 2. COMPATIBILIDADE DE PAINÉIS
+# -------------------------------------------------------------
+elif opcao == "Compatibilidade de Painéis":
+    st.title("Compatibilidade entre Painéis Fotovoltaicos")
+    st.write("Verifique se dois módulos são compatíveis para associação considerando o limite de **5% de variação** nos parâmetros elétricos nominais.")
+
+    try:
+        # Busca TODOS os painéis cadastrados (sem filtrar por disponibilidade na loja)
+        res = requests.get(f"{API_URL}/paineis/?apenas_disponiveis=false")
+        if res.status_code == 200:
+            todos_paineis = res.json()
+
+            if not todos_paineis:
+                st.warning("Nenhum painel cadastrado no banco de dados.")
+            else:
+                # Monta os rótulos para as caixas de seleção
+                opcoes = {f"{p['fabricante']} - {p['modelo']} ({p['potencia_wp']}W)": p for p in todos_paineis}
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    sel_a = st.selectbox("Selecione o Painel A", list(opcoes.keys()), key="comp_a")
+                with col2:
+                    sel_b = st.selectbox("Selecione o Painel B", list(opcoes.keys()), index=min(1, len(opcoes)-1), key="comp_b")
+
+                if st.button("Verificar Compatibilidade", type="primary"):
+                    p_a = opcoes[sel_a]
+                    p_b = opcoes[sel_b]
+
+                    # Cálculo percentual de variação em relação ao Painel A
+                    def calc_diff(val_a, val_b):
+                        return round(abs(val_a - val_b) / val_a * 100, 2) if val_a else 0.0
+
+                    diff_voc = calc_diff(p_a['voc_v'], p_b['voc_v'])
+                    diff_vmp = calc_diff(p_a['vmp_v'], p_b['vmp_v'])
+                    diff_isc = calc_diff(p_a['isc_a'], p_b['isc_a'])
+                    diff_imp = calc_diff(p_a['imp_a'], p_b['imp_a'])
+
+                    compativel = all(d <= 5.0 for d in [diff_voc, diff_vmp, diff_isc, diff_imp])
+
+                    st.markdown("---")
+                    if compativel:
+                        st.success("✅ **PAINÉIS COMPATÍVEIS!** Todas as variações elétricas nominais estão dentro do limite tolerado de 5%.")
+                    else:
+                        st.error("❌ **PAINÉIS INCOMPATÍVEIS!** Existe variação superior a 5% em um ou mais parâmetros elétricos.")
+
+                    # Tabela comparativa
+                    st.subheader("Comparativo Parâmetro a Parâmetro")
+                    tabela = [
+                        {"Parâmetro": "Voc (V)", "Painel A": p_a['voc_v'], "Painel B": p_b['voc_v'], "Diferença (%)": f"{diff_voc}%", "Status": "✅ OK" if diff_voc <= 5.0 else "❌ > 5%"},
+                        {"Parâmetro": "Vmp (V)", "Painel A": p_a['vmp_v'], "Painel B": p_b['vmp_v'], "Diferença (%)": f"{diff_vmp}%", "Status": "✅ OK" if diff_vmp <= 5.0 else "❌ > 5%"},
+                        {"Parâmetro": "Isc (A)", "Painel A": p_a['isc_a'], "Painel B": p_b['isc_a'], "Diferença (%)": f"{diff_isc}%", "Status": "✅ OK" if diff_isc <= 5.0 else "❌ > 5%"},
+                        {"Parâmetro": "Imp (A)", "Painel A": p_a['imp_a'], "Painel B": p_b['imp_a'], "Diferença (%)": f"{diff_imp}%", "Status": "✅ OK" if diff_imp <= 5.0 else "❌ > 5%"},
+                    ]
+                    st.table(tabela)
+        else:
+            st.error("Falha ao carregar a lista de painéis da API.")
+    except Exception as e:
+        st.error(f"Erro de comunicação com a API backend: {e}")
 
 # -------------------------------------------------------------
-# 2. GERENCIAR DISPONIBILIDADE (LOJA)
+# 3. GERENCIAR DISPONIBILIDADE (LOJA)
 # -------------------------------------------------------------
 elif opcao == "Gerenciar Disponibilidade (Loja)":
     st.header("🛒 Gerenciar Disponibilidade de Equipamentos em Loja")
@@ -168,7 +229,7 @@ elif opcao == "Gerenciar Disponibilidade (Loja)":
                         st.rerun()
 
 # -------------------------------------------------------------
-# 3. GESTÃO COMPLETA DE PAINÉIS (CRUD)
+# 4. GESTÃO COMPLETA DE PAINÉIS (CRUD)
 # -------------------------------------------------------------
 elif opcao == "Gestão de Painéis (CRUD)":
     st.header("⚡ Gestão de Painéis Fotovoltaicos")
@@ -258,7 +319,7 @@ elif opcao == "Gestão de Painéis (CRUD)":
                         st.rerun()
 
 # -------------------------------------------------------------
-# 4. GESTÃO COMPLETA DE INVERSORES (CRUD - ALTA PERFORMANCE)
+# 5. GESTÃO COMPLETA DE INVERSORES (CRUD - ALTA PERFORMANCE)
 # -------------------------------------------------------------
 elif opcao == "Gestão de Inversores (CRUD)":
     st.header("🔌 Gestão de Inversores Solar")
@@ -369,3 +430,4 @@ elif opcao == "Gestão de Inversores (CRUD)":
                         st.cache_data.clear()
                         st.success("Inversor cadastrado com sucesso!")
                         st.rerun()
+

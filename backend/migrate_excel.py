@@ -5,7 +5,7 @@ import models, auth
 
 models.Base.metadata.create_all(bind=engine)
 
-PLANILHA = "../calculo_mppt.xlsx"  # Caminho para a planilha
+PLANILHA = "calculo_mppt.xlsx" 
 
 def migrar_planilha():
     if not os.path.exists(PLANILHA):

@@ -291,3 +291,46 @@ def calcular_quantitativo(req: schemas.DimensionamentoRequest, db: Session = Dep
             })
 
     return resultados
+
+# Compatibilidade de painéis
+
+@app.get("/paineis/todos/")
+def listar_todos_paineis(db: Session = Depends(get_db)):
+    """Retorna TODOS os painéis cadastrados no banco (disponíveis ou não)."""
+    return db.query(models.Painel).all()
+
+@app.get("/paineis/comparar/")
+def comparar_paineis(painel_a_id: int, painel_b_id: int, db: Session = Depends(get_db)):
+    painel_a = db.query(models.Painel).filter(models.Painel.id == painel_a_id).first()
+    painel_b = db.query(models.Painel).filter(models.Painel.id == painel_b_id).first()
+
+    if not painel_a or not painel_b:
+        raise HTTPException(status_code=404, detail="Um ou ambos os painéis não foram encontrados.")
+
+    def calc_diff(val_a, val_b):
+        if val_a == 0:
+            return 0.0
+        return round(abs(val_a - val_b) / val_a * 100, 2)
+
+    diff_voc = calc_diff(painel_a.voc_v, painel_b.voc_v)
+    diff_vmp = calc_diff(painel_a.vmp_v, painel_b.vmp_v)
+    diff_isc = calc_diff(painel_a.isc_a, painel_b.isc_a)
+    diff_imp = calc_diff(painel_a.imp_a, painel_b.imp_a)
+
+    # Regra dos 5%
+    compativel = (
+        diff_voc <= 5.0 and 
+        diff_vmp <= 5.0 and 
+        diff_isc <= 5.0 and 
+        diff_imp <= 5.0
+    )
+
+    return {
+        "compativel": compativel,
+        "detalhes": {
+            "voc": {"painel_a": painel_a.voc_v, "painel_b": painel_b.voc_v, "diff_pct": diff_voc, "ok": diff_voc <= 5.0},
+            "vmp": {"painel_a": painel_a.vmp_v, "painel_b": painel_b.vmp_v, "diff_pct": diff_vmp, "ok": diff_vmp <= 5.0},
+            "isc": {"painel_a": painel_a.isc_a, "painel_b": painel_b.isc_a, "diff_pct": diff_isc, "ok": diff_isc <= 5.0},
+            "imp": {"painel_a": painel_a.imp_a, "painel_b": painel_b.imp_a, "diff_pct": diff_imp, "ok": diff_imp <= 5.0},
+        }
+    }

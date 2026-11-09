@@ -1,6 +1,8 @@
-.git
+venv/
+.venv/
+.git/
 .gitignore
-.github
-Dockerfile
-docker-compose.yml
+__pycache__/
+*.db
+*.sqlite3
 README.md

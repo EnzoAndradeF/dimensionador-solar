@@ -1,15 +1,44 @@
-version: '3.8'
-
 services:
-  dimensionador-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: dimensionador_solar_container
+  db:
+    image: postgres:15-alpine
+    container_name: dimensionador_solar_db
+    restart: always
+    environment:
+      POSTGRES_USER: solar_user
+      POSTGRES_PASSWORD: solar_password
+      POSTGRES_DB: dimensionador_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U solar_user -d dimensionador_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: dimensionador_solar_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://solar_user:solar_password@db:5432/dimensionador_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: dimensionador_solar_frontend
+    restart: always
+    environment:
+      - API_URL=http://backend:8000
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
-    environment:
-      - STREAMLIT_SERVER_HEADLESS=true
-    restart: always
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

@@ -7,8 +7,32 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
+  security-audit:
+    name: Audit de Segurança
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificação de VAZAMENTO de Credenciais (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan de Vulnerabilidades de Código/Infra (Trivy FS)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  build-and-push:
+    name: 🐳 Build & Push Imagens Docker
+    needs: security-audit
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Checkout repository
@@ -31,7 +55,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar-backend:latest
 
       - name: Build and Push Frontend Image
@@ -39,5 +63,5 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/dimensionador-solar-frontend:latest

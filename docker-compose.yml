@@ -19,6 +19,7 @@ services:
 
   backend:
     build: ./backend
+    image: ${DOCKERHUB_USERNAME:-enzoandradef}/dimensionador-solar-backend:latest
     container_name: dimensionador_solar_backend
     restart: always
     environment:
@@ -30,6 +31,7 @@ services:
 
   frontend:
     build: ./frontend
+    image: ${DOCKERHUB_USERNAME:-enzoandradef}/dimensionador-solar-frontend:latest
     container_name: dimensionador_solar_frontend
     restart: always
     environment:

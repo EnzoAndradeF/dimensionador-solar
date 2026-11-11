@@ -22,5 +22,5 @@ jobs:
             cd ~/dimensionador-solar
             git pull origin main
             sudo docker compose pull
-            sudo docker compose up -d
+            sudo docker compose up -d --force-recreate
             sudo docker system prune -af

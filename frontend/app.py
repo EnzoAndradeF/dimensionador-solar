@@ -96,8 +96,8 @@ if opcao == "Calculadora MPPT":
     opts_p = {f"[{p['sku']}] {p['fabricante']} {p['modelo']}": p['id'] for p in paineis}
     opts_i = {f"[{i['sku']}] {i['fabricante']} {i['modelo']}": i['id'] for i in inversores}
 
-    sel_p = st.sidebar.multiselect("Filtrar Painel(is) em Loja:", options=["Todos"] + list(opts_p.keys()), default=["Todos"])
-    sel_i = st.sidebar.multiselect("Filtrar Inversor(es) em Loja:", options=["Todos"] + list(opts_i.keys()), default=["Todos"])
+    sel_p = st.sidebar.multiselect("Filtrar Painéis:", options=["Todos"] + list(opts_p.keys()), default=["Todos"])
+    sel_i = st.sidebar.multiselect("Filtrar Inversores:", options=["Todos"] + list(opts_i.keys()), default=["Todos"])
 
     if st.button("Processar Quantitativo", type="primary"):
         ids_p = None if "Todos" in sel_p else [opts_p[k] for k in sel_p]
